@@ -20,6 +20,7 @@
         "symfony/framework-bundle": "7.0.*",
         "symfony/runtime": "7.0.*",
         "symfony/security-bundle": "7.0.*",
+        "symfony/service-contracts": "^3.5",
         "symfony/yaml": "7.0.*"
     },
     "require-dev": {

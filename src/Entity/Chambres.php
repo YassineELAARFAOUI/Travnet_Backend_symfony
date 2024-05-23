@@ -18,6 +18,9 @@ class Chambres implements UserInterface
     
     #[ORM\Column(type: 'integer')]
     private ?string $numeroPersonne = null;
+
+    #[ORM\Column(type: 'integer')]
+    private ?string $numeroEtage = null;
     
     #[ORM\Column(type: 'integer')]
     private ?int $numeroChambre = null;
@@ -41,7 +44,7 @@ class Chambres implements UserInterface
     #[ORM\Column(type: 'text')]
     private ?string $description = null;
     
-    #[ORM\Column(type: 'string', length: 9, unique: true)]
+    #[ORM\Column(type: 'string', length: 9)]
     private ?string $pattenteDeHotel = null;
 
     // Getters and Setters
@@ -58,6 +61,17 @@ class Chambres implements UserInterface
         return $this;
     }
 
+    public function getNumeroEtage(): ?string
+    {
+        return $this->numeroEtage;
+    }
+
+    public function setNumeroEtage(?string $numeroEtage): self
+    {
+        $this->numeroEtage = $numeroEtage;
+
+        return $this;
+    }
     public function getNumeroPersonne(): ?string
     {
         return $this->numeroPersonne;

@@ -75,7 +75,7 @@ class AccBusinessController extends AbstractController
         $data = json_decode($request->getContent(), true);
 
         // Validate incoming JSON data
-        if (!$data || !isset($data['email'], $data['password'])) {
+        if (!$data || !isset($data['email'])) {
             return $this->json(['stateData' => 0], 200);
         }
 
@@ -93,22 +93,15 @@ class AccBusinessController extends AbstractController
                     'existUser' => 1,
                     'isBlocked' => 1
                 ]);
-            } else {
-                $passwordClientFromDatabase = $accBusiness->getPassword();
-                
-                if ($passwordClientFromDatabase === $data['password']) {
-                    return $this->json([
-                        'existUser' => 1,
-                        'isBlocked' => 0,
-                        'password' => 1
-                    ]);
-                } else {
-                    return $this->json([
-                        'existUser' => 1,
-                        'isBlocked' => 0,
-                        'password' => 0
-                    ]); 
-                }
+            } else {                
+                return $this->json([
+                    'existUser' => 1,
+                    'isBlocked' => 0,
+                    'userId' => $accBusiness->getId(),
+                    'userEmail' => $accBusiness->getEmail(),
+                    'userPassword' => $accBusiness->getPassword(),
+                    'pateneteDeHotel' => $accBusiness->getPattenteDehotele(),
+                ]);
             }
         }
     }

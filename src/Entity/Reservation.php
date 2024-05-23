@@ -19,11 +19,14 @@ class Reservation implements UserInterface
     #[ORM\Column(type: 'string', length: 9)]
     private ?string $pattenteDeHotel = null;
     #[ORM\Column(type: 'datetime')]
-    private ?\DateTimeInterface $dateCheck_in = null;
+    private ?\DateTimeInterface $datecheckin = null;
     #[ORM\Column(type: 'datetime')]
-    private ?\DateTimeInterface $dateCheck_out = null;
+    private ?\DateTimeInterface $datecheckout = null;
     #[ORM\Column(type: 'boolean')]
     private bool $confirmation = false;
+    #[ORM\Column(type: 'integer')]
+    private ?int $numeroDeChambre = null;
+    
   
 
     // Getters and Setters
@@ -64,25 +67,25 @@ class Reservation implements UserInterface
         return $this;
     }
 
-    public function getDateCheck_in(): ?\DateTimeInterface
+    public function getDatecheckin(): ?\DateTimeInterface
     {
-        return $this->dateCheck_in;
+        return $this->datecheckin;
     }
 
-    public function setDateCheck_in(?\DateTimeInterface $dateCheck_in): self
+    public function setDateCheckin(?\DateTimeInterface $datecheckin): self
     {
-        $this->dateCheck_in = $dateCheck_in;
+        $this->datecheckin = $datecheckin;
 
         return $this;
     }
-    public function getDateCheck_out(): ?\DateTimeInterface
+    public function getDatecheckout(): ?\DateTimeInterface
     {
-        return $this->dateCheck_out;
+        return $this->datecheckout;
     }
 
-    public function setDateCheck_out(?\DateTimeInterface $dateCheck_out): self
+    public function setDatecheckout(?\DateTimeInterface $datecheckout): self
     {
-        $this->dateCheck_out = $dateCheck_out;
+        $this->datecheckout = $datecheckout;
 
         return $this;
     }
@@ -98,6 +101,19 @@ class Reservation implements UserInterface
 
         return $this;
     }
+
+    public function getNumeroDeChambre(): ?int
+    {
+        return $this->numeroDeChambre;
+    }
+
+    public function setNumeroDeChambre(?int $numeroDeChambre): self
+    {
+        $this->numeroDeChambre = $numeroDeChambre;
+
+        return $this;
+    }
+
 
     public function getUserIdentifier(): string
     {
