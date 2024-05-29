@@ -110,75 +110,135 @@ class AccClientController extends AbstractController
     }
 
     //visualiser les reclamation
-#[Route('/recupererdetailReservation', name: 'recupererdetailReservation', methods: ['POST'])]
-public function recupererdetailReservation(Request $request, EntityManagerInterface $entityManager): JsonResponse
-{
-    $data = json_decode($request->getContent(), true);
+    #[Route('/recupererdetailReservation', name: 'recupererdetailReservation', methods: ['POST'])]
+    public function recupererdetailReservation(Request $request, EntityManagerInterface $entityManager): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
 
-    // Validate incoming JSON data
-    if (!$data || !isset($data['clientId'], $data['currentDate'])) {
-        return $this->json(['stateData' => 0], 200);
-    }
-
-    // Verify existence of client
-    $iSClientExsit = $entityManager->getRepository(AccClient::class)->findOneBy([
-        'id' => $data['clientId'],
-    ]);
-    if (!$iSClientExsit) {
-        return $this->json(['state' => 0, 'stateData' => 1, 'iSClientExsit' => 0], 200);
-    }
-
-    // Convert string dates to DateTime objects
-    $currentDate = new \DateTime($data['currentDate']);
-
-    try {
-        $clientId = $data['clientId'];
-
-        // Requête pour récupérer toutes les réservations selon les conditions
-        $qb = $entityManager->createQueryBuilder();
-        $qb->select('r')
-            ->from(Reservation::class, 'r')
-            ->where('r.clientId = :clientId')
-            ->andWhere(':currentDate BETWEEN r.datecheckin AND r.datecheckout')
-            ->setParameter('clientId', $clientId)
-            ->setParameter('currentDate', $currentDate);
-
-        $ensembleDeReservations = $qb->getQuery()->getResult();
-        if (!$ensembleDeReservations) {
-            return $this->json([
-                'state' => 0,
-                'stateData' => 1,
-                'iSClientExsit' => 1,
-                'IsEnsembleReservationExsist' => 0,
-            ], 200);
+        // Validate incoming JSON data
+        if (!$data || !isset($data['clientId'], $data['currentDate'])) {
+            return $this->json(['stateData' => 0], 200);
         }
 
-        $reservationsDetails = [];
-        foreach ($ensembleDeReservations as $reservation) {
-            // Récupération des attributs
-            $pateneteDehotel = $reservation->getPattenteDeHotel();
-            $HotelObject = $entityManager->getRepository(Hotel::class)->findOneBy(['id' =>  $pateneteDehotel]);
-            $nameOfHotel = $HotelObject->getName();
-            $cityOfHotel = $HotelObject->getCity();
-            $numeroDeChambre = $reservation->getNumeroDeChambre();
-            $reservationsDetails[] = [
-                'pateneteDehotel' => $pateneteDehotel,
-                'nameOfHotel' => $nameOfHotel,
-                'cityOfHotel' => $cityOfHotel,
-                'numeroDeChambre' => $numeroDeChambre,
+        // Verify existence of client
+        $iSClientExsit = $entityManager->getRepository(AccClient::class)->findOneBy([
+            'id' => $data['clientId'],
+        ]);
+        if (!$iSClientExsit) {
+            return $this->json(['state' => 0, 'stateData' => 1, 'iSClientExsit' => 0], 200);
+        }
+
+        // Convert string dates to DateTime objects
+        $currentDate = new \DateTime($data['currentDate']);
+
+        try {
+            $clientId = $data['clientId'];
+
+            // Requête pour récupérer toutes les réservations selon les conditions
+            $qb = $entityManager->createQueryBuilder();
+            $qb->select('r')
+                ->from(Reservation::class, 'r')
+                ->where('r.clientId = :clientId')
+                ->andWhere(':currentDate BETWEEN r.datecheckin AND r.datecheckout')
+                ->setParameter('clientId', $clientId)
+                ->setParameter('currentDate', $currentDate);
+
+            $ensembleDeReservations = $qb->getQuery()->getResult();
+            if (!$ensembleDeReservations) {
+                return $this->json([
+                    'state' => 0,
+                    'stateData' => 1,
+                    'iSClientExsit' => 1,
+                    'IsEnsembleReservationExsist' => 0,
+                ], 200);
+            }
+
+            $reservationsDetails = [];
+            foreach ($ensembleDeReservations as $reservation) {
+                // Récupération des attributs
+                $pateneteDehotel = $reservation->getPattenteDeHotel();
+                $HotelObject = $entityManager->getRepository(Hotel::class)->findOneBy(['id' =>  $pateneteDehotel]);
+                $nameOfHotel = $HotelObject->getName();
+                $cityOfHotel = $HotelObject->getCity();
+                $numeroDeChambre = $reservation->getNumeroDeChambre();
+                $reservationsDetails[] = [
+                    'pateneteDehotel' => $pateneteDehotel,
+                    'nameOfHotel' => $nameOfHotel,
+                    'cityOfHotel' => $cityOfHotel,
+                    'numeroDeChambre' => $numeroDeChambre,
+                ];
+            }
+
+            return $this->json([
+                'state' => 1,
+                'stateData' => 1,
+                'iSClientExsit' => 1,
+                'IsEnsembleReservationExsist' => 1,
+                'reservations' => $reservationsDetails,
+            ], 200);
+        } catch (\Exception $e) {
+            return $this->json(['state' => 0, 'error' => $e->getMessage()], 200);
+        }
+    }
+
+    // route pour voir le catalogue des hôtels
+    #[Route('/viewCatlogHotel', name: 'viewCatlogHotel', methods: ['POST'])]
+    public function viewCatlogHotel(Request $request, EntityManagerInterface $entityManager): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+
+        if (!$data || !isset($data['city']) || !isset($data['datecheckin']) || !isset($data['datecheckout']) || !isset($data['page'])) {
+            return $this->json(['stateData' => 0], 200);
+        }
+
+        $city = $data['city'];
+        $page = $data['page'];
+        $pageSize = 9;
+        $offset = ($page - 1) * $pageSize;
+
+        // Création de la requête principale pour récupérer les prix min et max des chambres par hôtel
+        $qb = $entityManager->createQueryBuilder();
+        $qb->select('MIN(c.price) AS min, MAX(c.price) AS max, c.pattenteDeHotel AS hotel_id')
+            ->addSelect('(SELECT h1.city FROM App\Entity\Hotel h1 WHERE h1.id = c.pattenteDeHotel) AS city')
+            ->addSelect('(SELECT h3.img FROM App\Entity\Hotel h3 WHERE h3.id = c.pattenteDeHotel) AS img')
+            ->addSelect('(SELECT h2.description FROM App\Entity\Hotel h2 WHERE h2.id = c.pattenteDeHotel) AS description')
+            ->from('App\Entity\Chambres', 'c')
+            ->where($qb->expr()->in('c.pattenteDeHotel', 
+                $entityManager->createQueryBuilder()
+                    ->select('sub_h.id')
+                    ->from('App\Entity\Hotel', 'sub_h')
+                    ->where('sub_h.city = :city')
+                    ->getDQL()
+            ))
+            ->groupBy('c.pattenteDeHotel')
+            ->setFirstResult($offset)
+            ->setMaxResults($pageSize)
+            ->setParameter('city', $city);
+
+        $hotels = $qb->getQuery()->getResult();
+
+        if (empty($hotels)) {
+            return $this->json(['hotelExistent' => 0, 'stateData' => 1], 200);
+        }
+
+        $hotelsData = [];
+        foreach ($hotels as $hotel) {
+            $hotelsData[] = [
+                'hotel_id' => $hotel['hotel_id'],
+                'minPrice' => $hotel['min'],
+                'maxPrice' => $hotel['max'],
+                'city' => $hotel['city'],
+                'img' => $hotel['img'],
+                'description' => $hotel['description'],
+                // Ajoutez ici d'autres données de l'hôtel que vous souhaitez inclure
             ];
         }
 
         return $this->json([
-            'state' => 1,
             'stateData' => 1,
-            'iSClientExsit' => 1,
-            'IsEnsembleReservationExsist' => 1,
-            'reservations' => $reservationsDetails,
-        ], 200);
-    } catch (\Exception $e) {
-        return $this->json(['state' => 0, 'error' => $e->getMessage()], 200);
+            'hotelExistent' => 1,
+            'hotels' => $hotelsData
+        ]);
     }
-}
 
 }

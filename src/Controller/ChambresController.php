@@ -162,67 +162,127 @@ public function addmultichambre(Request $request): JsonResponse
 
 
 
-//recupere les chmbres resrver et non reservee       
-#[Route('/recuperChambres', name: 'recuperChambres', methods: ['POST'])]
-public function recuperChambres(Request $request, EntityManagerInterface $entityManager): JsonResponse
-{
-    $data = json_decode($request->getContent(), true);
+    //recupere les chmbres resrver et non reservee       
+    #[Route('/recuperChambres', name: 'recuperChambres', methods: ['POST'])]
+    public function recuperChambres(Request $request, EntityManagerInterface $entityManager): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
 
-    if (!$data || !isset($data['idAccBussiness']) || !isset($data['pattenteDeHotel']) || !isset($data['dateFilter'])) {
-        return $this->json(['stateData' => 0], 200);
-    }
+        if (!$data || !isset($data['idAccBussiness']) || !isset($data['pattenteDeHotel']) || !isset($data['dateFilter'])) {
+            return $this->json(['stateData' => 0], 200);
+        }
 
-    $pattenteDeHotel = $data['pattenteDeHotel'];
-    $page = $data['page'];
-    $pageSize = 5;
-    $offset = ($page - 1) * $pageSize;
-    $dateFilter = new \DateTime($data['dateFilter']);  // Assurez-vous que 'dateFilter' est une date valide
+        $pattenteDeHotel = $data['pattenteDeHotel'];
+        $page = $data['page'];
+        $pageSize = 5;
+        $offset = ($page - 1) * $pageSize;
+        $dateFilter = new \DateTime($data['dateFilter']);  // Assurez-vous que 'dateFilter' est une date valide
 
-    $chambresRepository = $entityManager->getRepository(Chambres::class);
+        $chambresRepository = $entityManager->getRepository(Chambres::class);
 
-    // Requête pour récupérer les chambres avec leur disponibilité
-    $qb = $chambresRepository->createQueryBuilder('c');
-    $qb->select('c', "CASE WHEN c.numeroChambre IN (SELECT r.numeroDeChambre FROM App\Entity\Reservation r WHERE r.pattenteDeHotel = :pattenteDeHotelSubquery AND :dateFilter BETWEEN r.datecheckin AND r.datecheckout) THEN 1 ELSE 0 END AS available")
-        ->andWhere('c.pattenteDeHotel = :pattenteDeHotel')
-        ->setParameter('pattenteDeHotel', $pattenteDeHotel)
-        ->setParameter('pattenteDeHotelSubquery', $pattenteDeHotel)
-        ->setParameter('dateFilter', $dateFilter)
-        ->setFirstResult($offset)
-        ->setMaxResults($pageSize);
-
-    $results = $qb->getQuery()->getResult();
-
-    if (empty($results)) {
-        return $this->json(['chambresExistent' => 0, 'stateData' => 1], 200);
-    }
-
-    $chambresData = [];
-    foreach ($results as $result) {
-        $chambre = $result[0]; // L'entité Chambre
-        $available = $result['available']; // Le champ calculé
-
-        $chambresData[] = [
-            'numero_chambre' => $chambre->getNumeroChambre(),
-            'numeroEtage' => $chambre->getNumeroEtage(),
-            'available' => $available
-        ];
-    }
-
-    // Requête pour compter le nombre total de chambres
-    $qbCount = $chambresRepository->createQueryBuilder('c');
-    $qbCount->select('COUNT(c.id)')
+        // Requête pour récupérer les chambres avec leur disponibilité
+        $qb = $chambresRepository->createQueryBuilder('c');
+        $qb->select('c', "CASE WHEN c.numeroChambre IN (SELECT r.numeroDeChambre FROM App\Entity\Reservation r WHERE r.pattenteDeHotel = :pattenteDeHotelSubquery AND :dateFilter BETWEEN r.datecheckin AND r.datecheckout) THEN 1 ELSE 0 END AS available")
             ->andWhere('c.pattenteDeHotel = :pattenteDeHotel')
-            ->setParameter('pattenteDeHotel', $pattenteDeHotel);
+            ->setParameter('pattenteDeHotel', $pattenteDeHotel)
+            ->setParameter('pattenteDeHotelSubquery', $pattenteDeHotel)
+            ->setParameter('dateFilter', $dateFilter)
+            ->setFirstResult($offset)
+            ->setMaxResults($pageSize);
 
-    $totalChambres = $qbCount->getQuery()->getSingleScalarResult();
+        $results = $qb->getQuery()->getResult();
 
-    return $this->json([
-        'stateData' => 1,
-        'chambresExistent' => 1,
-        'totalChambres' => $totalChambres,
-        'chambres' => $chambresData
-    ]);
-}
+        if (empty($results)) {
+            return $this->json(['chambresExistent' => 0, 'stateData' => 1], 200);
+        }
+
+        $chambresData = [];
+        foreach ($results as $result) {
+            $chambre = $result[0]; // L'entité Chambre
+            $available = $result['available']; // Le champ calculé
+
+            $chambresData[] = [
+                'numero_chambre' => $chambre->getNumeroChambre(),
+                'numeroEtage' => $chambre->getNumeroEtage(),
+                'available' => $available
+            ];
+        }
+
+        // Requête pour compter le nombre total de chambres
+        $qbCount = $chambresRepository->createQueryBuilder('c');
+        $qbCount->select('COUNT(c.id)')
+                ->andWhere('c.pattenteDeHotel = :pattenteDeHotel')
+                ->setParameter('pattenteDeHotel', $pattenteDeHotel);
+
+        $totalChambres = $qbCount->getQuery()->getSingleScalarResult();
+
+        return $this->json([
+            'stateData' => 1,
+            'chambresExistent' => 1,
+            'totalChambres' => $totalChambres,
+            'chambres' => $chambresData
+        ]);
+    }
+
+
+    // Route pour récupérer les numéros de chambre selon la disponibilité et les dates de check-in et de check-out
+    #[Route('/recupererNumeroEnsembleChambre', name: 'recupererNumeroEnsembleChambre', methods: ['POST'])]
+    public function recupererNumeroEnsembleChambre(Request $request, EntityManagerInterface $entityManager): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+
+        // Vérification des données requises
+        if (!$data || !isset($data['datecheckin']) || !isset($data['datecheckout']) || !isset($data['pattenteDeHotel'])) {
+            return $this->json(['stateData' => 0], 200);
+        }
+
+        // Extraction des données de la requête
+        $pattenteDeHotel = $data['pattenteDeHotel'];
+        $datecheckin = new \DateTime($data['datecheckin']);
+        $datecheckout = new \DateTime($data['datecheckout']);
+
+        // Vérification de la validité des dates de check-in et de check-out
+        if ($datecheckout < $datecheckin) {
+            return $this->json(['stateData' => 1, 'validationCheckinCheckout' => 0], 200);
+        }
+
+        $chambresRepository = $entityManager->getRepository(Chambres::class);
+
+        // Requête pour récupérer les chambres avec leur disponibilité
+        $qb = $chambresRepository->createQueryBuilder('c');
+        $qb->select('c.numeroChambre')
+            ->andWhere('c.pattenteDeHotel = :pattenteDeHotel')
+            ->andWhere($qb->expr()->notIn(
+                'c.numeroChambre',
+                $entityManager->createQueryBuilder()
+                    ->select('r.numeroDeChambre')
+                    ->from('App\Entity\Reservation', 'r')
+                    ->where('r.pattenteDeHotel = :pattenteDeHotelSubquery')
+                    ->andWhere('(r.datecheckout >= :datecheckin AND r.datecheckin <= :datecheckout)')
+                    ->getDQL()
+            ))
+            ->setParameter('pattenteDeHotel', $pattenteDeHotel)
+            ->setParameter('pattenteDeHotelSubquery', $pattenteDeHotel)
+            ->setParameter('datecheckin', $datecheckin)
+            ->setParameter('datecheckout', $datecheckout);
+
+        $results = $qb->getQuery()->getResult();
+
+        if (empty($results)) {
+            return $this->json(['chambresExistent' => 0, 'stateData' => 1], 200);
+        }
+
+        $chambresData = array_map(function($result) {
+            return ['numero_chambre' => $result['numeroChambre']];
+        }, $results);
+
+        return $this->json([
+            'stateData' => 1,
+            'chambresExistent' => 1,
+            'validationCheckinCheckout' => 1,
+            'chambres' => $chambresData
+        ]);
+    }
 
 
 }
