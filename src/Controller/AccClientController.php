@@ -241,4 +241,78 @@ class AccClientController extends AbstractController
         ]);
     }
 
+
+
+
+
+    ////////////////////  route for 8001 front
+
+    //blocker un client  cette route fait par Admin
+    #[Route('/blockOrDeblockClient', name: 'blockOrDeblockClient', methods: ['POST'])]
+    public function blockOrDeblockClient(Request $request, EntityManagerInterface $entityManager): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+
+        // Validate incoming JSON data
+        if (!$data || !isset($data['id'], $data['block'])) {
+            return $this->json(['state' => 0, 'stateData' => 0], 200);
+        }
+
+        // Use EntityManager to retrieve the client by id
+        $client = $entityManager->getRepository('App\Entity\AccClient')->find($data['id']);
+        if (empty($client)) {
+            return $this->json(['clientExistent' => 0, 'state' => 1], 200);
+        }
+
+        // Toggle the block status
+        $block = !$data['block'];
+        $client->setBlock($block);
+
+        try {
+            $entityManager->persist($client);
+            $entityManager->flush();
+
+            return $this->json([
+                'state' => 1,
+                'clientExistent' => 1
+            ]);
+        } catch (\Exception $e) {
+            // Return JSON response with error message
+            return $this->json([
+                'clientExistent' => 1,
+                'state' => 0
+            ]);
+        }
+    }
+
+    //route pour recuperer l'ensemble de client qui va envoyer au admin
+    #[Route('/viewAllclient', name: 'viewAllclient', methods: ['GET'])]
+    public function viewAllclient(Request $request, EntityManagerInterface $entityManager): JsonResponse
+    {
+        // Utilisation de l'EntityManager pour récupérer tous les clients
+        $allClients = $entityManager->getRepository('App\Entity\AccClient')->findAll();
+        if (empty($allClients)) {
+            return $this->json(['clientExistent' => 0, 'state' => 1], 200);
+        }
+
+        $clientsData = [];
+        foreach ($allClients as $client) {
+            $clientsData[] = [
+                'ClientId' => $client->getId(),
+                'fullName' => $client->getFullName(),
+                'email' => $client->getEmail(),
+                'phone' => $client->getPhone(),
+                'password' => $client->getPassword(),
+                'block' => $client->getBlock(),
+                // Ajoutez ici d'autres données du client que vous souhaitez inclure
+            ];
+        }
+
+        return $this->json([
+            'state' => 1,
+            'clientExistent' => 1,
+            'allClients' => $clientsData
+        ]);
+    }
+
 }

@@ -144,5 +144,52 @@ class HotelController extends AbstractController
 
     }
 
+
+    //route pour recuperer juste 4 hotels 
+    #[Route('/recupererQuatreHotelParpattenete', name: 'recupererQuatreHotelParpattenete', methods: ['GET'])]
+    public function recupererQuatreHotelParpattenete(Request $request): JsonResponse
+    {
+        //////////////////////////////////
+        // Supposons que vous voulez récupérer $limit nombre d'entités
+        $limit = 4; // par exemple, 2 entités
+    
+        // Modification de l'instruction pour utiliser findBy avec une limite sans critère spécifique
+        $hotels = $this->entityManager->getRepository(Hotel::class)->findBy(
+            [], // pas de critère spécifique
+            null, // ordre (peut être null si non nécessaire)
+            $limit, // limite
+            null // offset (peut être null si non nécessaire)
+        );
+    
+        if (empty($hotels)) {
+            return $this->json([
+                'pattenteDehotele' => 0
+            ]);
+        } else {
+            $hotelData = [];
+    
+            try {
+                foreach ($hotels as $hotel) {
+                    $hotelData[] = [
+                        'hotelName' => $hotel->getName(),
+                        'cityofHotel' => $hotel->getCity(),
+                        'imageName' => $hotel->getImg(),
+                    ];
+                }
+    
+                return $this->json([
+                    'isHotelExsist' => 1,
+                    'state' => 1,
+                    'hotels' => $hotelData
+                ]);
+            } catch (\Exception $e) {
+                // Return JSON response with error message
+                return $this->json([
+                    'idAccBussiness' => 1,
+                    'state' => 0
+                ]);
+            }
+        }
+    }
      
 }
